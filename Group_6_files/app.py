@@ -23,13 +23,13 @@ st.markdown("### Group 6 - Workplace Fairness & AI Transparency Project")
 st.divider()
 
 # ─────────────────────────────────────────
-# LOAD + TRAIN MODEL
+# LOAD & TRAIN MODEL
 # ─────────────────────────────────────────
 @st.cache_resource
 def load_and_train():
 
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    csv_path = os.path.join(BASE_DIR, "hr_data_clean.csv")
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    csv_path = os.path.join(base_dir, "hr_data_clean.csv")
 
     df = pd.read_csv(csv_path)
     df_model = df.copy()
@@ -43,19 +43,19 @@ def load_and_train():
         df_model[col] = le.fit_transform(df_model[col].astype(str))
         encoders[col] = le
 
-    # features + target
+    # features & target
     X = df_model.drop(["employee_id", "is_promoted"], axis=1)
     y = df_model["is_promoted"]
 
     # clean numeric issues
     X = X.apply(pd.to_numeric, errors="coerce").fillna(0)
 
-    # train-test split
+    # split
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
 
-    # SMOTE balancing
+    # SMOTE
     smote = SMOTE(random_state=42, k_neighbors=3)
     X_train_bal, y_train_bal = smote.fit_resample(X_train, y_train)
 
@@ -167,12 +167,17 @@ with col2:
 
         shap_vals = np.array(shap_vals).flatten()
 
+        # FIX LENGTH MISMATCH (CRITICAL FIX)
+        min_len = min(len(feature_names), len(shap_vals))
+        feature_names_fixed = feature_names[:min_len]
+        shap_vals_fixed = shap_vals[:min_len]
+
+        colors = ["#ff4b4b" if v < 0 else "#00c853" for v in shap_vals_fixed]
+
         fig, ax = plt.subplots(figsize=(8, 4))
-
-        colors = ["#ff4b4b" if v < 0 else "#00c853" for v in shap_vals]
-
-        ax.barh(feature_names, shap_vals, color=colors)
+        ax.barh(feature_names_fixed, shap_vals_fixed, color=colors)
         ax.axvline(x=0, color="black", linewidth=0.8)
+
         ax.set_title("Feature Impact (SHAP Explanation)")
         ax.set_xlabel("Impact on Prediction")
 
