@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import os
 
 # ─────────────────────────────────────────
-# PAGE CONFIGURATION
+# PAGE CONFIG
 # ─────────────────────────────────────────
 st.set_page_config(
     page_title="Employee Promotion Predictor",
@@ -23,7 +23,7 @@ st.markdown("### Group 6 - Workplace Fairness & AI Transparency Project")
 st.divider()
 
 # ─────────────────────────────────────────
-# LOAD AND TRAIN MODEL
+# LOAD + TRAIN MODEL
 # ─────────────────────────────────────────
 @st.cache_resource
 def load_and_train():
@@ -32,10 +32,9 @@ def load_and_train():
     csv_path = os.path.join(BASE_DIR, "hr_data_clean.csv")
 
     df = pd.read_csv(csv_path)
-
     df_model = df.copy()
 
-    # ── ENCODE CATEGORICAL COLUMNS ──
+    # encode categorical columns
     text_cols = ["department", "region", "education", "gender", "recruitment_channel"]
     encoders = {}
 
@@ -44,23 +43,23 @@ def load_and_train():
         df_model[col] = le.fit_transform(df_model[col].astype(str))
         encoders[col] = le
 
-    # ── FEATURES & TARGET ──
+    # features + target
     X = df_model.drop(["employee_id", "is_promoted"], axis=1)
     y = df_model["is_promoted"]
 
-    # ensure numeric + clean
+    # clean numeric issues
     X = X.apply(pd.to_numeric, errors="coerce").fillna(0)
 
-    # ── SPLIT ──
+    # train-test split
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
 
-    # ── SMOTE ──
+    # SMOTE balancing
     smote = SMOTE(random_state=42, k_neighbors=3)
     X_train_bal, y_train_bal = smote.fit_resample(X_train, y_train)
 
-    # ── MODEL ──
+    # model
     model = RandomForestClassifier(n_estimators=100, random_state=42)
     model.fit(X_train_bal, y_train_bal)
 
@@ -72,7 +71,7 @@ with st.spinner("Training model..."):
 st.success("Model ready!")
 
 # ─────────────────────────────────────────
-# SIDEBAR INPUT
+# INPUT UI
 # ─────────────────────────────────────────
 st.sidebar.header("Employee Details")
 
@@ -110,17 +109,18 @@ region = st.sidebar.selectbox("Region", [f"region_{i}" for i in range(1, 35)])
 # ─────────────────────────────────────────
 def encode_input():
 
-    dept = encoders["department"].transform([department])[0]
-    edu = encoders["education"].transform([education])[0]
-    gen = encoders["gender"].transform(["f" if gender == "Female" else "m"])[0]
-    rec = encoders["recruitment_channel"].transform([recruitment_channel])[0]
-    reg = encoders["region"].transform([region])[0]
-    aw = 1 if awards_won == "Yes" else 0
-
-    return pd.DataFrame([[ 
-        dept, reg, edu, gen, rec,
-        no_of_trainings, age, previous_year_rating,
-        length_of_service, aw, avg_training_score
+    return pd.DataFrame([[
+        encoders["department"].transform([department])[0],
+        encoders["region"].transform([region])[0],
+        encoders["education"].transform([education])[0],
+        encoders["gender"].transform(["f" if gender == "Female" else "m"])[0],
+        encoders["recruitment_channel"].transform([recruitment_channel])[0],
+        no_of_trainings,
+        age,
+        previous_year_rating,
+        length_of_service,
+        1 if awards_won == "Yes" else 0,
+        avg_training_score
     ]], columns=feature_names)
 
 # ─────────────────────────────────────────
@@ -142,6 +142,7 @@ with col2:
     st.subheader("Prediction")
 
     if st.button("Predict"):
+
         input_df = encode_input()
 
         prediction = model.predict(input_df)[0]
@@ -155,7 +156,7 @@ with col2:
         st.metric("Probability", f"{probability:.2%}")
         st.progress(float(probability))
 
-        # ── SHAP FIXED BLOCK ──
+        # ───────── SHAP FIXED ─────────
         explainer = shap.TreeExplainer(model)
         shap_values = explainer.shap_values(input_df)
 
@@ -163,6 +164,8 @@ with col2:
             shap_vals = shap_values[1][0]
         else:
             shap_vals = shap_values[0]
+
+        shap_vals = np.array(shap_vals).flatten()
 
         fig, ax = plt.subplots(figsize=(8, 4))
 
