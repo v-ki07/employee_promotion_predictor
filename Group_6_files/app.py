@@ -7,6 +7,7 @@ from sklearn.preprocessing import LabelEncoder
 from imblearn.over_sampling import SMOTE
 import shap
 import matplotlib.pyplot as plt
+import seaborn as sns
 import os
 
 # ─────────────────────────────────────────
@@ -23,45 +24,42 @@ st.markdown("### Group 6 - Workplace Fairness & AI Transparency Project")
 st.divider()
 
 # ─────────────────────────────────────────
-# LOAD & TRAIN MODEL
+# LOAD DATA (GLOBAL FOR PLOTS)
+# ─────────────────────────────────────────
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+csv_path = os.path.join(BASE_DIR, "hr_data_clean.csv")
+df_raw = pd.read_csv(csv_path)
+
+# ─────────────────────────────────────────
+# TRAIN MODEL
 # ─────────────────────────────────────────
 @st.cache_resource
 def load_and_train():
 
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    csv_path = os.path.join(base_dir, "hr_data_clean.csv")
+    df = df_raw.copy()
 
-    df = pd.read_csv(csv_path)
-    df_model = df.copy()
-
-    # encode categorical columns
     text_cols = ["department", "region", "education", "gender", "recruitment_channel"]
     encoders = {}
 
     for col in text_cols:
         le = LabelEncoder()
-        df_model[col] = le.fit_transform(df_model[col].astype(str))
+        df[col] = le.fit_transform(df[col].astype(str))
         encoders[col] = le
 
-    # features and target
-    X = df_model.drop(["employee_id", "is_promoted"], axis=1)
-    y = df_model["is_promoted"]
+    X = df.drop(["employee_id", "is_promoted"], axis=1)
+    y = df["is_promoted"]
 
-    # clean numeric
     X = X.apply(pd.to_numeric, errors="coerce").fillna(0)
 
-    # split
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
 
-    # SMOTE
     smote = SMOTE(random_state=42, k_neighbors=3)
-    X_train_bal, y_train_bal = smote.fit_resample(X_train, y_train)
+    X_train, y_train = smote.fit_resample(X_train, y_train)
 
-    # model
-    model = RandomForestClassifier(n_estimators=100, random_state=42)
-    model.fit(X_train_bal, y_train_bal)
+    model = RandomForestClassifier(n_estimators=120, random_state=42)
+    model.fit(X_train, y_train)
 
     return model, encoders, X.columns.tolist()
 
@@ -157,13 +155,96 @@ with col2:
 
         if prediction == 1:
             st.success("LIKELY TO BE PROMOTED")
+            st.info("This employee shows strong performance indicators.")
         else:
             st.error("NOT LIKELY TO BE PROMOTED")
+            st.info("This employee currently lacks strong promotion signals.")
 
-        st.metric("Probability", f"{probability:.2%}")
+        st.metric("Promotion Probability", f"{probability:.2%}")
         st.progress(float(probability))
 
-        # ───────── SHAP FIXED ─────────
+        st.divider()
+
+        # ─────────────────────────────────────────
+        # 📊 CHART 1: PROMOTION DISTRIBUTION
+        # ─────────────────────────────────────────
+        st.subheader("📊 Promotion Distribution")
+
+        fig1, ax1 = plt.subplots()
+        sns.countplot(data=df_raw, x="is_promoted", ax=ax1)
+        ax1.set_title("Promotion vs Non-Promotion")
+
+        st.pyplot(fig1)
+
+        st.write("""
+        📌 This chart shows class imbalance. Most employees are not promoted,
+        so the model learns strict patterns before predicting promotion.
+        """)
+
+        st.divider()
+
+        # ─────────────────────────────────────────
+        # 📊 CHART 2: TRAINING SCORE IMPACT
+        # ─────────────────────────────────────────
+        st.subheader("📈 Training Score vs Promotion")
+
+        fig2, ax2 = plt.subplots()
+        sns.boxplot(data=df_raw, x="is_promoted", y="avg_training_score", ax=ax2)
+
+        st.pyplot(fig2)
+
+        st.write("""
+        📌 Higher training scores are strongly associated with promotions.
+        This indicates performance is a key driver of decisions.
+        """)
+
+        st.divider()
+
+        # ─────────────────────────────────────────
+        # 📊 CHART 3: AGE DISTRIBUTION
+        # ─────────────────────────────────────────
+        st.subheader("📉 Age vs Promotion")
+
+        fig3, ax3 = plt.subplots()
+        sns.boxplot(data=df_raw, x="is_promoted", y="age", ax=ax3)
+
+        st.pyplot(fig3)
+
+        st.write("""
+        📌 Age does not strongly influence promotion outcomes,
+        suggesting fairness in age-related decisions.
+        """)
+
+        st.divider()
+
+        # ─────────────────────────────────────────
+        # 📊 CHART 4: FEATURE IMPORTANCE
+        # ─────────────────────────────────────────
+        st.subheader("📊 Feature Importance")
+
+        importance = model.feature_importances_
+
+        feat_df = pd.DataFrame({
+            "Feature": feature_names,
+            "Importance": importance
+        }).sort_values("Importance")
+
+        fig4, ax4 = plt.subplots()
+        ax4.barh(feat_df["Feature"], feat_df["Importance"])
+        st.pyplot(fig4)
+
+        st.write("""
+        📌 The model relies mostly on performance-related features like:
+        training score, rating, and years of service.
+        """)
+
+        st.divider()
+
+        # ─────────────────────────────────────────
+        # 🧠 SHAP EXPLANATION
+        # ─────────────────────────────────────────
+        st.subheader("🧠 SHAP Explanation")
+
         explainer = shap.TreeExplainer(model)
         shap_values = explainer.shap_values(input_df)
 
@@ -175,18 +256,21 @@ with col2:
         shap_vals = np.array(shap_vals).flatten()
 
         min_len = min(len(feature_names), len(shap_vals))
-        feature_names_fixed = feature_names[:min_len]
-        shap_vals_fixed = shap_vals[:min_len]
 
-        colors = ["#ff4b4b" if v < 0 else "#00c853" for v in shap_vals_fixed]
+        fig5, ax5 = plt.subplots(figsize=(8, 4))
+        colors = ["#ff4b4b" if v < 0 else "#00c853"
+                  for v in shap_vals[:min_len]]
 
-        fig, ax = plt.subplots(figsize=(8, 4))
-        ax.barh(feature_names_fixed, shap_vals_fixed, color=colors)
-        ax.axvline(x=0, color="black", linewidth=0.8)
-        ax.set_title("Feature Impact (SHAP Explanation)")
-        ax.set_xlabel("Impact on Prediction")
+        ax5.barh(feature_names[:min_len], shap_vals[:min_len], color=colors)
+        ax5.axvline(0, color="black")
+        ax5.set_title("Feature Impact on Prediction")
 
-        plt.tight_layout()
-        st.pyplot(fig)
+        st.pyplot(fig5)
 
-st.caption("Group 6 Project - Random Forest + SHAP")
+        st.write("""
+        📌 Green bars increase promotion probability.
+        Red bars decrease it.
+        Longer bars = stronger influence on the decision.
+        """)
+
+st.caption("Group 6 Project - Random Forest + SHAP + Analytics Dashboard")
