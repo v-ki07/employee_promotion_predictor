@@ -37,17 +37,16 @@ st.divider()
 # ─────────────────────────────────────────
 @st.cache_resource
 def load_and_train():
-    # Load from local cleaned file
-    df = pd.read_csv("hr_data_clean.csv")
+
+    import os
+
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    csv_path = os.path.join(BASE_DIR, "hr_data_clean.csv")
+
+    df = pd.read_csv(csv_path)
 
     # Encode text columns
     df_model = df.copy()
-    text_cols = ["department","region","education","gender","recruitment_channel"]
-    encoders = {}
-    for col in text_cols:
-        le = LabelEncoder()
-        df_model[col] = le.fit_transform(df_model[col].astype(str))
-        encoders[col] = le
 
     # Split features and target
     X = df_model.drop(["employee_id","is_promoted"], axis=1)
