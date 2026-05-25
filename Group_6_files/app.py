@@ -33,9 +33,9 @@ def load_and_train():
 
     df = pd.read_csv(csv_path)
 
-    # ---- ENCODING ----
     df_model = df.copy()
 
+    # ── ENCODE CATEGORICAL COLUMNS ──
     text_cols = ["department", "region", "education", "gender", "recruitment_channel"]
     encoders = {}
 
@@ -44,23 +44,23 @@ def load_and_train():
         df_model[col] = le.fit_transform(df_model[col].astype(str))
         encoders[col] = le
 
-    # ---- FEATURES / TARGET ----
+    # ── FEATURES & TARGET ──
     X = df_model.drop(["employee_id", "is_promoted"], axis=1)
     y = df_model["is_promoted"]
 
-    # make sure everything is numeric + clean
+    # ensure numeric + clean
     X = X.apply(pd.to_numeric, errors="coerce").fillna(0)
 
-    # ---- SPLIT ----
+    # ── SPLIT ──
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
 
-    # ---- SMOTE ----
+    # ── SMOTE ──
     smote = SMOTE(random_state=42, k_neighbors=3)
     X_train_bal, y_train_bal = smote.fit_resample(X_train, y_train)
 
-    # ---- MODEL ----
+    # ── MODEL ──
     model = RandomForestClassifier(n_estimators=100, random_state=42)
     model.fit(X_train_bal, y_train_bal)
 
@@ -124,7 +124,7 @@ def encode_input():
     ]], columns=feature_names)
 
 # ─────────────────────────────────────────
-# PREDICTION
+# MAIN UI
 # ─────────────────────────────────────────
 col1, col2 = st.columns(2)
 
@@ -134,7 +134,8 @@ with col1:
         "Department": department,
         "Education": education,
         "Gender": gender,
-        "Age": age
+        "Age": age,
+        "Service": length_of_service
     })
 
 with col2:
@@ -154,15 +155,25 @@ with col2:
         st.metric("Probability", f"{probability:.2%}")
         st.progress(float(probability))
 
-        # SHAP
+        # ── SHAP FIXED BLOCK ──
         explainer = shap.TreeExplainer(model)
         shap_values = explainer.shap_values(input_df)
 
-        shap_vals = shap_values[1][0]
+        if isinstance(shap_values, list):
+            shap_vals = shap_values[1][0]
+        else:
+            shap_vals = shap_values[0]
 
-        fig, ax = plt.subplots()
-        ax.barh(feature_names, shap_vals)
-        ax.set_title("Feature Impact (SHAP)")
+        fig, ax = plt.subplots(figsize=(8, 4))
+
+        colors = ["#ff4b4b" if v < 0 else "#00c853" for v in shap_vals]
+
+        ax.barh(feature_names, shap_vals, color=colors)
+        ax.axvline(x=0, color="black", linewidth=0.8)
+        ax.set_title("Feature Impact (SHAP Explanation)")
+        ax.set_xlabel("Impact on Prediction")
+
+        plt.tight_layout()
         st.pyplot(fig)
 
 st.caption("Group 6 Project - Random Forest + SHAP")
