@@ -43,11 +43,11 @@ def load_and_train():
         df_model[col] = le.fit_transform(df_model[col].astype(str))
         encoders[col] = le
 
-    # features & target
+    # features and target
     X = df_model.drop(["employee_id", "is_promoted"], axis=1)
     y = df_model["is_promoted"]
 
-    # clean numeric issues
+    # clean numeric
     X = X.apply(pd.to_numeric, errors="coerce").fillna(0)
 
     # split
@@ -71,7 +71,7 @@ with st.spinner("Training model..."):
 st.success("Model ready!")
 
 # ─────────────────────────────────────────
-# INPUT UI
+# SIDEBAR INPUT
 # ─────────────────────────────────────────
 st.sidebar.header("Employee Details")
 
@@ -130,13 +130,20 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.subheader("Employee Summary")
-    st.write({
-        "Department": department,
-        "Education": education,
-        "Gender": gender,
-        "Age": age,
-        "Service": length_of_service
-    })
+
+    st.markdown(f"""
+    **Department:** {department}  
+    **Education:** {education}  
+    **Gender:** {gender}  
+    **Age:** {age}  
+    **Years of Service:** {length_of_service}  
+    **Rating:** {previous_year_rating}  
+    **Training Score:** {avg_training_score}  
+    **Trainings Completed:** {no_of_trainings}  
+    **Award Won:** {awards_won}  
+    **Recruitment Channel:** {recruitment_channel}  
+    **Region:** {region}
+    """)
 
 with col2:
     st.subheader("Prediction")
@@ -167,7 +174,6 @@ with col2:
 
         shap_vals = np.array(shap_vals).flatten()
 
-        # FIX LENGTH MISMATCH (CRITICAL FIX)
         min_len = min(len(feature_names), len(shap_vals))
         feature_names_fixed = feature_names[:min_len]
         shap_vals_fixed = shap_vals[:min_len]
@@ -177,7 +183,6 @@ with col2:
         fig, ax = plt.subplots(figsize=(8, 4))
         ax.barh(feature_names_fixed, shap_vals_fixed, color=colors)
         ax.axvline(x=0, color="black", linewidth=0.8)
-
         ax.set_title("Feature Impact (SHAP Explanation)")
         ax.set_xlabel("Impact on Prediction")
 
