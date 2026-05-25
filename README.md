@@ -7,7 +7,31 @@ The system predicts whether an employee is likely to be promoted based on workpl
 This project was developed by Group 6 for CSC 322: Computer Science Innovation and New Technology.
 
 ---
+---
 
+# 🎥 Demo Video
+
+You can watch the full project demonstration here:
+
+[YouTube Demo](https://youtu.be/ChPD7N_SVYI?si=U1kU5YW_kNLvMgZR)
+
+---
+
+# 🌍 Live Streamlit App
+
+Access the deployed application here:
+
+[Streamlit App](https://employeepromotionpredictor-dk2hmrdkzx8qjb7dpttfts.streamlit.app/)
+
+---
+
+# 📄 Project Documentation
+
+View the full project report here:
+
+[Project Report]()
+
+---
 # 📌 Project Objectives
 
 The main goals of this project were to:
@@ -122,31 +146,6 @@ The Streamlit application allows users to:
 - See SHAP explanation charts
 - Understand which features influenced the prediction
 
----
-
-# 🎥 Demo Video
-
-You can watch the full project demonstration here:
-
-[YouTube Demo](https://youtu.be/ChPD7N_SVYI?si=U1kU5YW_kNLvMgZR)
-
----
-
-# 🌍 Live Streamlit App
-
-Access the deployed application here:
-
-[Streamlit App]()
-
----
-
-# 📄 Project Documentation
-
-View the full project report here:
-
-[Project Report]()
-
----
 
 # 👥 Team Members
 
