@@ -29,7 +29,7 @@ Access the deployed application here:
 
 View the full project report here:
 
-[Project Report]()
+[Project Report](.Group_6_files/Group6_Employee_Performance_Report.docs)
 
 ---
 # 📌 Project Objectives
