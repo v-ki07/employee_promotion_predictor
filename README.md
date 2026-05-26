@@ -13,7 +13,7 @@ This project was developed by Group 6 for CSC 322: Computer Science Innovation a
 
 You can watch the full project demonstration here:
 
-[YouTube Demo](https://youtu.be/ChPD7N_SVYI?si=U1kU5YW_kNLvMgZR)
+[YouTube Demo](https://youtu.be/L1bXutq6uRY)
 
 ---
 
